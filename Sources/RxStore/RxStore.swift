@@ -16,7 +16,7 @@ final public class RxStoreSubject<T: Equatable & Codable>: Subject {
     public typealias Failure = Never
     
     public var value: Output
-    private let wrapped: CurrentValueSubject<Output, Never>
+    internal let wrapped: CurrentValueSubject<Output, Never>
 
     public func send(_ value: Output) {
         self.wrapped.send(value)
@@ -123,9 +123,9 @@ extension RxStoreProtocol {
 
 
 public class RxStore: RxStoreProtocol {
-    internal var stream: AnyPublisher<RxStoreAction, Never>
-    internal var actions = PassthroughSubject<RxStoreAction, Never>()
-    internal var _anyCancellable: AnyCancellable?
+    public var stream: AnyPublisher<RxStoreAction, Never>
+    public var actions = PassthroughSubject<RxStoreAction, Never>()
+    public var _anyCancellable: AnyCancellable?
     
     init() {
         self.stream = actions
