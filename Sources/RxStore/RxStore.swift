@@ -9,15 +9,16 @@ import Foundation
 import Combine
 
 
-final class RxStoreSubject<T: Equatable & Codable>: Subject {
 
-    typealias Output = T
-    typealias Failure = Never
+final public class RxStoreSubject<T: Equatable & Codable>: Subject {
+
+    public typealias Output = T
+    public typealias Failure = Never
     
-    var value: Output
+    public var value: Output
     private let wrapped: CurrentValueSubject<Output, Never>
 
-    func send(_ value: Output) {
+    public func send(_ value: Output) {
         self.wrapped.send(value)
     }
     
@@ -26,14 +27,14 @@ final class RxStoreSubject<T: Equatable & Codable>: Subject {
         self.wrapped = .init(value)
     }
     
-    func send(completion: Subscribers.Completion<Failure>) {
+    public func send(completion: Subscribers.Completion<Failure>) {
         wrapped.send(completion: completion)
     }
     
-    func send(subscription: Subscription) {
+    public func send(subscription: Subscription) {
         self.wrapped.send(subscription: subscription)
     }
-    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
+    public func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
         wrapped.removeDuplicates()
             .handleEvents(receiveOutput: { self.value = $0 })
             .subscribe(subscriber)
@@ -45,13 +46,13 @@ final class RxStoreSubject<T: Equatable & Codable>: Subject {
 
 public protocol RxStoreAction {}
 
-enum RxStoreActions: RxStoreAction {
+public enum RxStoreActions: RxStoreAction {
     case Empty
 }
 
-protocol RxStoreState: Equatable, Codable {}
+public protocol RxStoreState: Equatable, Codable {}
 
-protocol RxStoreEffects {
+public protocol RxStoreEffects {
     typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
     associatedtype Store
     typealias Effect = (Store, ActionObservable) -> ActionObservable
