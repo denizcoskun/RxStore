@@ -9,31 +9,32 @@ import Foundation
 import Combine
 
 
-final class RxStoreSubject<T: Equatable & Codable>: Subject {
 
-    typealias Output = T
-    typealias Failure = Never
+final public class RxStoreSubject<T: Equatable & Codable>: Subject {
+
+    public typealias Output = T
+    public typealias Failure = Never
     
-    var value: Output
-    private let wrapped: CurrentValueSubject<Output, Never>
+    public var value: Output
+    public let wrapped: CurrentValueSubject<Output, Never>
 
-    func send(_ value: Output) {
+    public func send(_ value: Output) {
         self.wrapped.send(value)
     }
     
-    init(_ value: T) {
+    public init(_ value: T) {
         self.value = value
         self.wrapped = .init(value)
     }
     
-    func send(completion: Subscribers.Completion<Failure>) {
+    public func send(completion: Subscribers.Completion<Failure>) {
         wrapped.send(completion: completion)
     }
     
-    func send(subscription: Subscription) {
+    public func send(subscription: Subscription) {
         self.wrapped.send(subscription: subscription)
     }
-    func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
+    public func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
         wrapped.removeDuplicates()
             .handleEvents(receiveOutput: { self.value = $0 })
             .subscribe(subscriber)
@@ -45,19 +46,19 @@ final class RxStoreSubject<T: Equatable & Codable>: Subject {
 
 public protocol RxStoreAction {}
 
-enum RxStoreActions: RxStoreAction {
+public enum RxStoreActions: RxStoreAction {
     case Empty
 }
 
-protocol RxStoreState: Equatable, Codable {}
+public protocol RxStoreState: Equatable, Codable {}
 
-protocol RxStoreEffects {
+public protocol RxStoreEffects {
     typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
     associatedtype Store
     typealias Effect = (Store, ActionObservable) -> ActionObservable
 }
 
-protocol RxStoreProtocol : AnyObject {
+public protocol RxStoreProtocol : AnyObject {
     typealias ActionSubject = PassthroughSubject<RxStoreAction, Never>
     var actions: PassthroughSubject<RxStoreAction, Never>{ get }
     var stream: AnyPublisher<RxStoreAction, Never> {get set}
@@ -66,8 +67,8 @@ protocol RxStoreProtocol : AnyObject {
 
 
 extension RxStoreProtocol {
-    typealias Reducer<T> = (T, RxStoreAction) -> T
-    func registerReducer<T>(for property: KeyPath<Self, RxStoreSubject<T>> , reducer: @escaping (T, RxStoreAction) -> T) -> Self {
+    public typealias Reducer<T> = (T, RxStoreAction) -> T
+    public func registerReducer<T>(for property: KeyPath<Self, RxStoreSubject<T>> , reducer: @escaping (T, RxStoreAction) -> T) -> Self {
         self.stream = stream.handleEvents(receiveOutput: { action in
             let state = reducer(self[keyPath: property].value, action)
             self[keyPath: property].send(state)
@@ -76,11 +77,11 @@ extension RxStoreProtocol {
         return self
     }
     
-    func dispatch(action: RxStoreAction) {
+    public func dispatch(action: RxStoreAction) {
         actions.send(action)
     }
     
-    func initialize() -> Self {
+    public func initialize() -> Self {
         self._anyCancellable = self.stream
             .sink(receiveValue: { _ in})
         return self
@@ -89,10 +90,10 @@ extension RxStoreProtocol {
 }
 
 extension RxStoreProtocol {
-    typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
-    typealias Effect = (Self, ActionObservable) -> ActionObservable?
+    public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
+    public typealias Effect = (Self, ActionObservable) -> ActionObservable?
 
-    func registerEffects(_ effects: [Effect] ) -> Self {
+    public func registerEffects(_ effects: [Effect] ) -> Self {
         self.stream = self.stream
                 .flatMap({ action in
                     return effects.map({effect in
@@ -112,7 +113,7 @@ extension RxStoreProtocol {
 
 extension RxStoreProtocol {
     
-    func mergeStates<T: Publisher,K: Publisher>(statePath: KeyPath<Self,T>, statePath2: KeyPath<Self,K>) -> Publishers.CombineLatest<T,K> {
+    public func mergeStates<T: Publisher,K: Publisher>(statePath: KeyPath<Self,T>, statePath2: KeyPath<Self,K>) -> Publishers.CombineLatest<T,K> {
         let a = self[keyPath: statePath]
         let b = self[keyPath: statePath2]
         return Publishers.CombineLatest(a,b)
@@ -121,12 +122,12 @@ extension RxStoreProtocol {
 }
 
 
-public class RxStore: RxStoreProtocol {
-    internal var stream: AnyPublisher<RxStoreAction, Never>
-    internal var actions = PassthroughSubject<RxStoreAction, Never>()
-    internal var _anyCancellable: AnyCancellable?
+open class RxStore: RxStoreProtocol {
+    public var stream: AnyPublisher<RxStoreAction, Never>
+    public var actions = PassthroughSubject<RxStoreAction, Never>()
+    public var _anyCancellable: AnyCancellable?
     
-    init() {
+    public init() {
         self.stream = actions
             .filter { action in
                 if case RxStoreActions.Empty = action {
