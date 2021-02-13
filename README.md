@@ -7,7 +7,7 @@ RxStore is a fully reactive state management tool built on top of Combine. It is
 ## Basic Usage
 
 
-```
+```swift
 
 class AppStore: RxStore {
     var counterState = RxStoreSubject(0)
@@ -32,9 +32,48 @@ appStore.dispatch(CounterState.Increment)
 
 ```
 
-## Foundation
+## Usage with side effects
 
-More docs to be added...
 
+```swift
+
+typealias TodosState = Dictionary<Int, Todo>
+
+let todoReducer: RxStore.Reducer = {state, action -> TodosState in
+    switch action {
+    case Action.LoadTodosSuccess(let todos):
+        var newState = state
+        todos.forEach {
+            newState[$0.id] = $0
+        }
+        return newState
+    default:
+        return state
+    }
+}
+let loadTodos: RxStore.Effect = {state, action in
+    action.flatMap {action -> RxStore.ActionObservable in
+        if case Action.LoadTodos = action   {
+            return mockGetTodosFromServer().map {
+                Action.LoadTodosSuccess($0)
+            }.eraseToAnyPublisher()
+        }
+        return Empty().eraseToAnyPublisher()
+    }.eraseToAnyPublisher()
+}
+
+class AppStore: RxStore {
+    var todosState = RxStoreSubject<TodosState>([:])
+}
+
+let store = AppStore()
+    .registerReducer(for: \.todosState, reducer: todoReducer)
+    .registerEffects([loadTodos])
+    .initialize()
+
+store.dispatch(Action.LoadTodos) // This will fetch the todos from the server 
+
+
+```
 
 
