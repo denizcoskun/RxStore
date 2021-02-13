@@ -26,7 +26,7 @@ let counterReducer: RxStore.Reducer<Int> = {state, action in
 
 let appStore = AppStore().registerReducer(for: \.counterState, counterReducer).initialize()
 
-appStore.counterState.sink(receiveValue: {print($0}) // 0, 1
+let cancellable = appStore.counterState.sink(receiveValue: {print($0}) // 0, 1
 
 appStore.dispatch(CounterState.Increment)
 
@@ -67,12 +67,18 @@ let loadTodos: RxStore.Effect = {state, action in
 
 class AppStore: RxStore {
     var todosState = RxStoreSubject<TodosState>([:])
+    var loadingState = RxStoreSubject(false)
 }
 
 let store = AppStore()
     .registerReducer(for: \.todosState, reducer: todoReducer)
+    .registerReducer(for: \.loadingState, reducer: loadingReducer)
     .registerEffects([loadTodos])
     .initialize()
+
+let cancellable = store.todosState.sink(receiveValue: {state in
+            print(state) // [], ["mock-todo-id": MockTodo]
+})
 
 store.dispatch(Action.LoadTodos) // This will fetch the todos from the server 
 
