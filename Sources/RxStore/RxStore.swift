@@ -58,7 +58,7 @@ public protocol RxStoreEffects {
     typealias Effect = (Store, ActionObservable) -> ActionObservable
 }
 
-protocol RxStoreProtocol : AnyObject {
+public protocol RxStoreProtocol : AnyObject {
     typealias ActionSubject = PassthroughSubject<RxStoreAction, Never>
     var actions: PassthroughSubject<RxStoreAction, Never>{ get }
     var stream: AnyPublisher<RxStoreAction, Never> {get set}
