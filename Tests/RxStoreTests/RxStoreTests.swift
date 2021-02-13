@@ -60,6 +60,70 @@ final class RxStoreTests: XCTestCase {
         store.dispatch(action: RxStoreActions.Empty)
         store.dispatch(action: Action.first)
     }
+    
+    func testEffects() {
+        struct Todo: Codable, Equatable {
+            let userId: Int
+            let id: Int
+            let title: String
+            let completed: Bool
+            internal init(userId: Int, id: Int, title: String, completed: Bool) {
+                self.userId = userId
+                self.id = id
+                self.title = title
+                self.completed = completed
+            }
+            
+        }
+        
+        enum Action: RxStoreAction, Equatable{
+            case LoadTodos
+            case LoadTodosSuccess([Todo])
+            case LoadTodosFailure
+        }
+        
+        typealias TodosState = Dictionary<Int, Todo>
+        let mockTodo = Todo(userId: 1, id: 123, title: "Todo A", completed: false)
+        func mockGetTodosFromServer() -> AnyPublisher<[Todo],Never> {
+            return Just([mockTodo]).eraseToAnyPublisher()
+        }
+        let todoReducer: RxStore.Reducer = {state, action -> TodosState in
+            switch action {
+            case Action.LoadTodosSuccess(let todos):
+                var newState = state
+                todos.forEach {
+                    newState[$0.id] = $0
+                }
+                return newState
+            default:
+                return state
+            }
+        }
+        let loadTodos: RxStore.Effect = {state, action in
+            action.flatMap {action -> RxStore.ActionObservable in
+                if case Action.LoadTodos = action   {
+                    return mockGetTodosFromServer().map {
+                        Action.LoadTodosSuccess($0)
+                    }.eraseToAnyPublisher()
+                }
+                return Empty().eraseToAnyPublisher()
+            }.eraseToAnyPublisher()
+        }
+        class AppStore: RxStore {
+            var todosState = RxStoreSubject<TodosState>([:])
+        }
+        
+        let store = AppStore()
+            .registerReducer(for: \.todosState, reducer: todoReducer)
+            .registerEffects([loadTodos])
+            .initialize()
+        
+        store.dispatch(action: Action.LoadTodos)
+        let _ = store.todosState.sink(receiveValue: {state in
+            XCTAssertEqual(state, [mockTodo.id: mockTodo])
+        })
+        
+    }
 
     static var allTests = [
         ("testExample", testExampleWithCounter),

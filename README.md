@@ -38,6 +38,9 @@ appStore.dispatch(CounterState.Increment)
 ```swift
 
 typealias TodosState = Dictionary<Int, Todo>
+enum Action: RxStoreAction {
+    case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
+}
 
 let todoReducer: RxStore.Reducer = {state, action -> TodosState in
     switch action {
