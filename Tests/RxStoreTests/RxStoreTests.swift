@@ -1,14 +1,14 @@
 import XCTest
 import Combine
 
-@testable import RxStore
+import RxStore
 
 final class RxStoreTests: XCTestCase {
     func testExampleWithCounter() {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
         // results.
-        enum CounterAction: RxStoreAction {
+        enum CounterAction: RxStore.Action {
             case Increment
             case Decrement
         }
@@ -51,7 +51,7 @@ final class RxStoreTests: XCTestCase {
                 return false
             }).initialize()
         
-        enum Action: RxStoreAction {
+        enum Action: RxStore.Action {
             case first
         }
         let _ = store.emptyState.sink(receiveValue: {state in
@@ -76,10 +76,8 @@ final class RxStoreTests: XCTestCase {
             
         }
         
-        enum Action: RxStoreAction, Equatable{
-            case LoadTodos
-            case LoadTodosSuccess([Todo])
-            case LoadTodosFailure
+        enum Action: RxStore.Action {
+            case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
         }
         
         typealias TodosState = Dictionary<Int, Todo>
@@ -99,6 +97,7 @@ final class RxStoreTests: XCTestCase {
                 return state
             }
         }
+        
         let loadTodos: RxStore.Effect = {state, action in
             action.flatMap {action -> RxStore.ActionObservable in
                 if case Action.LoadTodos = action   {
@@ -123,6 +122,27 @@ final class RxStoreTests: XCTestCase {
             XCTAssertEqual(state, [mockTodo.id: mockTodo])
         })
         
+    }
+    
+    func testSelector() {
+        class TestStore: RxStore {
+            var todos = RxStoreSubject([mockTodo, mockTodo2])
+            var userTodoIds = RxStoreSubject<Dictionary<Int, [Int]>>([userId:[mockTodo.id], userId2: [mockTodo2.id]])
+        }
+        
+        let store = TestStore().initialize()
+        
+        let getTodosForSelectedUser = { (userId: Int) in
+            return TestStore.createSelector(path: \.todos, path2: \.userTodoIds, handler: { todos, userTodoIds -> [Todo] in
+                let todoIds = userTodoIds[userId] ?? []
+                let userTodos = todos.filter { todo in  todoIds.contains(todo.id) }
+                return userTodos
+            })
+        }
+        
+        let _ = store.select(getTodosForSelectedUser(userId2)).sink(receiveValue: {userTodos in
+            XCTAssertEqual(userTodos, [mockTodo2])
+        })
     }
 
     static var allTests = [

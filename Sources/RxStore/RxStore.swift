@@ -46,28 +46,29 @@ final public class RxStoreSubject<T: Equatable & Codable>: Subject {
 
 public protocol RxStoreAction {}
 
-public enum RxStoreActions: RxStoreAction {
-    case Empty
-}
-
-public protocol RxStoreState: Equatable, Codable {}
-
-public protocol RxStoreEffects {
-    typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
-    associatedtype Store
-    typealias Effect = (Store, ActionObservable) -> ActionObservable
-}
-
 public protocol RxStoreProtocol : AnyObject {
-    typealias ActionSubject = PassthroughSubject<RxStoreAction, Never>
-    var actions: PassthroughSubject<RxStoreAction, Never>{ get }
-    var stream: AnyPublisher<RxStoreAction, Never> {get set}
+    typealias Action = RxStoreAction
+    typealias Reducer<T> = (T, Action) -> T
+    typealias State = Equatable & Codable
+    typealias ActionSubject = PassthroughSubject<Action, Never>
+    var actions: PassthroughSubject<Action, Never>{ get }
+    var stream: AnyPublisher<Action, Never> {get set}
     var _anyCancellable: AnyCancellable? {get set}
 }
 
 
+public enum RxStoreActions: RxStoreAction {
+    case Empty
+}
+
+
 extension RxStoreProtocol {
-    public typealias Reducer<T> = (T, RxStoreAction) -> T
+    public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
+    public typealias Effect = (Self, ActionObservable) -> ActionObservable
+}
+
+extension RxStoreProtocol {
+
     public func registerReducer<T>(for property: KeyPath<Self, RxStoreSubject<T>> , reducer: @escaping (T, RxStoreAction) -> T) -> Self {
         self.stream = stream.handleEvents(receiveOutput: { action in
             let state = reducer(self[keyPath: property].value, action)
@@ -90,9 +91,6 @@ extension RxStoreProtocol {
 }
 
 extension RxStoreProtocol {
-    public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
-    public typealias Effect = (Self, ActionObservable) -> ActionObservable?
-
     public func registerEffects(_ effects: [Effect] ) -> Self {
         self.stream = self.stream
                 .flatMap({ action in
@@ -119,6 +117,25 @@ extension RxStoreProtocol {
         return Publishers.CombineLatest(a,b)
     }
 
+}
+
+
+extension RxStoreProtocol {
+
+    public typealias Selector<A: State,B: State,C> = (KeyPath<Self,RxStoreSubject<A>>,KeyPath<Self,RxStoreSubject<B>>,  @escaping (A,B) -> C) -> (Self) -> AnyPublisher<C, Never>
+
+    public static func createSelector<A,B,C>(path: KeyPath<Self,RxStoreSubject<A>>, path2: KeyPath<Self,RxStoreSubject<B>>, handler: @escaping (A,B) -> C) -> (Self) -> AnyPublisher<C, Never> {
+        func result(store: Self) -> AnyPublisher<C, Never> {
+            return store.mergeStates(statePath: path, statePath2: path2).map {state, state2 in
+                handler(state, state2)
+           }.eraseToAnyPublisher()
+        }
+        return result
+    }
+
+    public func select<R>(_ selector: @escaping (Self) -> R) -> R {
+        return selector(self)
+    }
 }
 
 

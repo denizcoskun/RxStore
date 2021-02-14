@@ -38,7 +38,7 @@ appStore.dispatch(CounterState.Increment)
 ```swift
 
 typealias TodosState = Dictionary<Int, Todo>
-enum Action: RxStoreAction {
+enum Action: RxStore.Action {
     case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
 }
 
@@ -82,7 +82,36 @@ let cancellable = store.todosState.sink(receiveValue: {state in
 
 store.dispatch(Action.LoadTodos) // This will fetch the todos from the server 
 
-
 ```
 
 
+## Selectors
+
+Selectors allow you to work with combination of different states at the same time.
+
+Below is an example of how a selector can be used:
+
+```swift
+let todoList = [mockTodo, mockTodo2]
+let userTodoIds: Dictionary<Int, [Int]> = [userId:[mockTodo.id], userId2: [mockTodo2.id]]
+
+class TestStore: RxStore {
+    var todos = RxStoreSubject(todoList)
+    var userTodos = RxStoreSubject(userTodoIds)
+}
+
+let store = TestStore().initialize()
+
+let getTodosForSelectedUser = { (userId: Int) in
+    return TestStore.createSelector(path: \.todos, path2: \.userTodos, handler: { todos, userTodoIds -> [Todo] in
+        let todoIds = userTodoIds[userId] ?? []
+        let userTodos = todos.filter { todo in  todoIds.contains(todo.id) }
+        return userTodos
+    })
+}
+
+let _ = store.select(getTodosForSelectedUser(userId2)).sink(receiveValue: {userTodos in
+    print(userTodos) // [mockTodo2]
+})
+
+```
