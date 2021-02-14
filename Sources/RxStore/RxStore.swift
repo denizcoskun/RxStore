@@ -69,7 +69,7 @@ extension RxStoreProtocol {
 
 extension RxStoreProtocol {
 
-    public func registerReducer<T>(for property: KeyPath<Self, RxStoreSubject<T>> , reducer: @escaping (T, RxStoreAction) -> T) -> Self {
+    public func registerReducer<T>(for property: KeyPath<Self, RxStoreSubject<T>> , _ reducer: @escaping (T, RxStoreAction) -> T) -> Self {
         self.stream = stream.handleEvents(receiveOutput: { action in
             let state = reducer(self[keyPath: property].value, action)
             self[keyPath: property].send(state)

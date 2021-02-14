@@ -29,7 +29,7 @@ final class RxStoreTests: XCTestCase {
             }
         }
         
-        let store = TestStore().registerReducer(for: \.counterState, reducer: reducer)
+        let store = TestStore().registerReducer(for: \.counterState, reducer)
         .initialize()
         
         store.dispatch(action: CounterAction.Increment)
@@ -44,7 +44,7 @@ final class RxStoreTests: XCTestCase {
             let emptyState = RxStoreSubject(false)
         }
         
-        let store = TestStore().registerReducer(for: \.emptyState, reducer: {state, action in
+        let store = TestStore().registerReducer(for: \.emptyState, {state, action in
                 if case RxStoreActions.Empty = action {
                     return true
                 }
@@ -113,7 +113,7 @@ final class RxStoreTests: XCTestCase {
         }
         
         let store = AppStore()
-            .registerReducer(for: \.todosState, reducer: todoReducer)
+            .registerReducer(for: \.todosState, todoReducer)
             .registerEffects([loadTodos])
             .initialize()
         
