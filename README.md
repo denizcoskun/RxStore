@@ -1,6 +1,6 @@
 # RxStore
 
-RxStore is a fully reactive state management tool built on top of Combine. It is a naive implementation of Redux inspired by @ngrx/store.
+RxStore is a fully reactive state management tool built on top of Combine. It is a naive implementation of Redux inspired by [@ngrx/store](https://ngrx.io/guide/store).
 
 
 
