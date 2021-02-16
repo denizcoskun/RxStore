@@ -13,22 +13,28 @@ class AppStore: RxStore {
     var counterState = RxStoreSubject(0)
 }
 
-let counterReducer: RxStore.Reducer<Int> = {state, action in
-    switch action {
-        case CounterAction.Increment:
-            return state + 1
-        case CounterAction.Decrement:
-            return state - 1
-        default:
-            return state
-    }
+enum Action: RxStoreAction {
+    case Increment, Decrement
 }
 
-let appStore = AppStore().registerReducer(for: \.counterState, counterReducer).initialize()
+let appStore = AppStore()
+    .registerReducer(for: \.counterState) { state, action in
+        switch action {
+            case Action.Increment:
+                return state + 1
+            case Action.Decrement:
+                return state - 1
+            default:
+                return state
+        }
+    }
+    .initialize()
 
-let cancellable = appStore.counterState.sink(receiveValue: {print($0}) // 0, 1
+let cancellable = appStore
+    .counterState
+    .sink(receiveValue: {print($0)}) // 0, 1
 
-appStore.dispatch(CounterState.Increment)
+appStore.dispatch(action: Action.Increment)
 
 ```
 
