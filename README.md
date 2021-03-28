@@ -1,7 +1,7 @@
 # RxStore
 
 RxStore is a fully reactive state management tool built on top of Apple's [Combine](https://developer.apple.com/documentation/combine) framework. 
-It is a naive implementation of (Redux)[https://redux.js.org/] inspired by [@ngrx/store](https://ngrx.io/guide/store).
+It is a naive implementation of [Redux](https://redux.js.org/) inspired by [@ngrx/store](https://ngrx.io/guide/store).
 
 ## Demo App
 [Spotify-Playlist-Sorter](https://github.com/denizcoskun/Spotify-Playlist-Sorter)
