@@ -45,7 +45,77 @@ let cancellable = appStore
     .counterState
     .sink(receiveValue: {print($0)}) // 0, 1
 
-appStore.dispatch(action: Action.Increment)
+appStore.dispatch(action: CounterAction.Increment)
+
+```
+
+
+## App store with multiple states
+
+
+```swift
+
+// Define your app store, it can have multiple sub states
+class AppStore: RxStore {
+    var counterState = RxStoreSubject(0)
+    var loadingState = RxStoreSubject(false)
+}
+
+// Define actions
+enum CounterAction: RxStore.Action {
+    case Increment
+    case Decrement
+}
+
+enum LoadingAction: RxStore.Action {
+    case Loading
+    case Loaded
+}
+
+
+// Reducer for counter state
+let counterReducer : RxStore.Reducer<Int> = {state, action in
+    switch action {
+    case CounterAction.Increment:
+        return state + 1
+    case CounterAction.Decrement:
+        return state - 1
+    default:
+        return state
+    }
+}
+
+// Reducer for loading state
+let loadingReducer: RxStore.Reducer<Bool> = {state, action in
+    switch action {
+    case LoadingAction.Loading:
+        return true
+    case LoadingAction.Loaded:
+        return false
+    default:
+        return state
+    }
+}
+
+// Register the reducer and initialize the app store
+
+let appStore = AppStore()
+    .registerReducer(for: \.counterState, counterReducer)
+    .registerReducer(for: \.loadingState, loadingReducer)
+    .initialize()
+
+// You are ready to go
+
+let cancellable = appStore
+    .counterState
+    .sink(receiveValue: {print($0)}) // 0, 1
+
+let cancellable2 = appStore
+    .loadingState
+    .sink(receiveValue: {print($0)}) // false, true
+
+appStore.dispatch(action: CounterAction.Increment)
+appStore.dispatch(action: LoadingAction.Loaded)
 
 ```
 
