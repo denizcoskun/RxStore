@@ -16,12 +16,12 @@ final class RxStoreTests: XCTestCase {
         // results.
 
         
-        class TestStore: RxStore {
-            var counterState = RxStoreSubject(0)
+        class AppStore: RxStore {
+            var counterState = RxStore.State(0)
         }
         
         
-        let reducer : RxStore.Reducer<Int> = {state, action in
+        let reducer : AppStore.Reducer<Int> = {state, action in
             switch action {
             case CounterAction.Increment:
                 return state + 1
@@ -32,7 +32,7 @@ final class RxStoreTests: XCTestCase {
             }
         }
         
-        let store = TestStore().registerReducer(for: \.counterState, reducer)
+        let store = AppStore().registerReducer(for: \.counterState, reducer)
         .initialize()
         
         store.dispatch(action: CounterAction.Increment)
@@ -45,7 +45,7 @@ final class RxStoreTests: XCTestCase {
     
     func testEmptyActionsIgnored() {
         class TestStore: RxStore {
-            let emptyState = RxStoreSubject(false)
+            let emptyState = RxStore.State(false)
         }
         
         let store = TestStore().registerReducer(for: \.emptyState, {state, action in
@@ -131,14 +131,25 @@ final class RxStoreTests: XCTestCase {
     
     func testSelector() {
         class AppStore: RxStore {
-            var todos = RxStoreSubject([mockTodo])
-            var userTodoIds = RxStoreSubject<Dictionary<Int, [Int]>>([userId:[mockTodo.id], userId2: [mockTodo2.id]])
-            var counter = RxStoreSubject(0)
+            var todos = RxStore.State([mockTodo])
+            var userTodoIds = RxStore.State<Dictionary<Int, [Int]>>([userId:[mockTodo.id], userId2: [mockTodo2.id]])
+            var counter = RxStore.State(0)
         }
         enum Action: RxStore.Action {
             case AddTodo(Todo)
         }
 
+        func counterReducer(_ state: Int, action: RxStore.Action) -> Int {
+                switch action {
+                    case CounterAction.Increment:
+                        return state + 1
+                    case CounterAction.Decrement:
+                        return state - 1
+                    default:
+                        return state
+                }
+            }
+        
         let store = AppStore()
             .registerReducer(for: \.todos, {state, action in
                 if case Action.AddTodo(let todo) = action {
@@ -148,16 +159,7 @@ final class RxStoreTests: XCTestCase {
                 }
                 return state
             })
-            .registerReducer(for: \.counter, {state, action in
-                switch action {
-                case CounterAction.Increment:
-                    return state + 1
-                case CounterAction.Decrement:
-                    return state - 1
-                default:
-                    return state
-                }
-            })
+            .registerReducer(for: \.counter, counterReducer)
             .initialize()
         
         func getTodosForSelectedUser(_ userId: Int) -> AppStore.Selector<[Todo]> {

@@ -10,7 +10,7 @@ import Combine
 
 
 
-final public class RxStoreSubject<T: Equatable & Codable>: Subject {
+public final class RxStoreSubject<T: Equatable & Codable>: Subject {
 
     public typealias Output = T
     public typealias Failure = Never
@@ -49,7 +49,7 @@ public protocol RxStoreAction {}
 public protocol RxStoreProtocol : AnyObject {
     typealias Action = RxStoreAction
     typealias Reducer<T> = (T, Action) -> T
-    typealias State = Equatable & Codable
+    typealias State<T: Equatable & Codable> = RxStoreSubject<T>
     typealias ActionSubject = PassthroughSubject<Action, Never>
     var actions: PassthroughSubject<Action, Never>{ get }
     var stream: AnyPublisher<Action, Never> {get set}
@@ -137,6 +137,7 @@ extension RxStoreProtocol {
     public func select<R>(_ selector: @escaping Selector<R>) -> AnyPublisher<R, Never> {
         return selector(self)
     }
+    
 }
 
 

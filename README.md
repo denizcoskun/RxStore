@@ -13,7 +13,7 @@ It is a naive implementation of [Redux](https://redux.js.org/) inspired by [@ngr
 
 // Define your app store, it can have multiple sub states
 class AppStore: RxStore {
-    var counterState = RxStoreSubject(0)
+    var counterState = RxStore.State(0)
 }
 
 // Define actions
@@ -58,8 +58,8 @@ appStore.dispatch(action: CounterAction.Increment)
 
 // Define your app store, it can have multiple sub states
 class AppStore: RxStore {
-    var counterState = RxStoreSubject(0)
-    var loadingState = RxStoreSubject(false)
+    var counterState = RxStore.State(0)
+    var loadingState = RxStore.State(false)
 }
 
 // Define actions
@@ -133,8 +133,8 @@ struct Todo {
 typealias TodosState = Dictionary<Int, Todo>
 
 class AppStore: RxStore {
-    var todosState = RxStoreSubject<TodosState>([:])
-    var loadingState = RxStoreSubject(false)
+    var todosState = RxStore.State<TodosState>([:])
+    var loadingState = RxStore.State(false)
 }
 
 enum Action: RxStore.Action {
@@ -193,8 +193,8 @@ let todoList = [mockTodo, mockTodo2]
 let userTodoIds: Dictionary<Int, [Int]> = [userId:[mockTodo.id], userId2: [mockTodo2.id]]
 
 class AppStore: RxStore {
-    var todos = RxStoreSubject(todoList)
-    var userTodos = RxStoreSubject(userTodoIds)
+    var todos = RxStore.State(todoList)
+    var userTodos = RxStore.State(userTodoIds)
 }
 
 let store = AppStore().initialize()
