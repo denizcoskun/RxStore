@@ -10,16 +10,18 @@ RxStore is a fully reactive state management tool built on top of Combine. It is
 
 ```swift
 
+// Define your app store, it can have multiple sub states
 class AppStore: RxStore {
     var counterState = RxStoreSubject(0)
 }
 
+// Define actions
 enum CounterAction: RxStore.Action {
     case Increment
     case Decrement
 }
 
-
+// Create a reducer
 let reducer : RxStore.Reducer<Int> = {state, action in
     switch action {
     case CounterAction.Increment:
@@ -31,9 +33,13 @@ let reducer : RxStore.Reducer<Int> = {state, action in
     }
 }
 
+// Register the reducer and initialize the app store
+
 let appStore = AppStore()
     .registerReducer(for: \.counterState, reducer)
     .initialize()
+
+// You are ready to go
 
 let cancellable = appStore
     .counterState
@@ -48,7 +54,18 @@ appStore.dispatch(action: Action.Increment)
 
 ```swift
 
+struct Todo {
+ let id: Int
+ let text: String
+}
+
 typealias TodosState = Dictionary<Int, Todo>
+
+class AppStore: RxStore {
+    var todosState = RxStoreSubject<TodosState>([:])
+    var loadingState = RxStoreSubject(false)
+}
+
 enum Action: RxStore.Action {
     case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
 }
@@ -65,7 +82,8 @@ let todoReducer: RxStore.Reducer = {state, action -> TodosState in
         return state
     }
 }
-let loadTodos: RxStore.Effect = {state, action in
+
+let loadTodosEffect: RxStore.Effect = {state, action in
     action.flatMap {action -> RxStore.ActionObservable in
         if case Action.LoadTodos = action   {
             return mockGetTodosFromServer().map {
@@ -76,15 +94,12 @@ let loadTodos: RxStore.Effect = {state, action in
     }.eraseToAnyPublisher()
 }
 
-class AppStore: RxStore {
-    var todosState = RxStoreSubject<TodosState>([:])
-    var loadingState = RxStoreSubject(false)
-}
+
 
 let store = AppStore()
     .registerReducer(for: \.todosState, reducer: todoReducer)
     .registerReducer(for: \.loadingState, reducer: loadingReducer)
-    .registerEffects([loadTodos])
+    .registerEffects([loadTodosEffect])
     .initialize()
 
 let cancellable = store.todosState.sink(receiveValue: {state in
@@ -98,7 +113,7 @@ store.dispatch(Action.LoadTodos) // This will fetch the todos from the server
 
 ## Selectors
 
-Selectors allow you to work with combination of different states at the same time.
+Selectors allow you to combine sub states and convert them into expected result.
 
 Below is an example of how a selector can be used:
 
