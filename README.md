@@ -102,23 +102,23 @@ Below is an example of how a selector can be used:
 let todoList = [mockTodo, mockTodo2]
 let userTodoIds: Dictionary<Int, [Int]> = [userId:[mockTodo.id], userId2: [mockTodo2.id]]
 
-class TestStore: RxStore {
+class AppStore: RxStore {
     var todos = RxStoreSubject(todoList)
     var userTodos = RxStoreSubject(userTodoIds)
 }
 
-let store = TestStore().initialize()
+let store = AppStore().initialize()
 
-let getTodosForSelectedUser = { (userId: Int) in
-    return TestStore.createSelector(path: \.todos, path2: \.userTodos, handler: { todos, userTodoIds -> [Todo] in
+func getTodosForSelectedUser(_ userId: Int) -> AppStore.Selector<[Todo]> {
+    AppStore.createSelector(path: \.todos, path2: \.userTodoIds) { todos, userTodoIds -> [Todo] in
         let todoIds = userTodoIds[userId] ?? []
         let userTodos = todos.filter { todo in  todoIds.contains(todo.id) }
         return userTodos
-    })
+    }
 }
 
-let _ = store.select(getTodosForSelectedUser(userId2)).sink(receiveValue: {userTodos in
+let _ = store.select(getTodosForSelectedUser(userId2)).sink { userTodos in
     print(userTodos) // [mockTodo2]
-})
+}
 
 ```

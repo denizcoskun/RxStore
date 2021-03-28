@@ -3,15 +3,18 @@ import Combine
 
 import RxStore
 
+enum CounterAction: RxStore.Action {
+    case Increment
+    case Decrement
+    case Dummy
+}
+
 final class RxStoreTests: XCTestCase {
     func testExampleWithCounter() {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
         // results.
-        enum CounterAction: RxStore.Action {
-            case Increment
-            case Decrement
-        }
+
         
         class TestStore: RxStore {
             var counterState = RxStoreSubject(0)
@@ -36,6 +39,7 @@ final class RxStoreTests: XCTestCase {
         let _ = store.counterState.sink(receiveValue: { value in
             XCTAssertEqual(value, 1)
         })
+        
         
     }
     
@@ -76,7 +80,7 @@ final class RxStoreTests: XCTestCase {
             
         }
         
-        enum Action: RxStore.Action {
+        enum Action: RxStoreAction {
             case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
         }
         
@@ -108,6 +112,7 @@ final class RxStoreTests: XCTestCase {
                 return Empty().eraseToAnyPublisher()
             }.eraseToAnyPublisher()
         }
+        
         class AppStore: RxStore {
             var todosState = RxStoreSubject<TodosState>([:])
         }
@@ -125,27 +130,54 @@ final class RxStoreTests: XCTestCase {
     }
     
     func testSelector() {
-        class TestStore: RxStore {
-            var todos = RxStoreSubject([mockTodo, mockTodo2])
+        class AppStore: RxStore {
+            var todos = RxStoreSubject([mockTodo])
             var userTodoIds = RxStoreSubject<Dictionary<Int, [Int]>>([userId:[mockTodo.id], userId2: [mockTodo2.id]])
+            var counter = RxStoreSubject(0)
         }
+        enum Action: RxStore.Action {
+            case AddTodo(Todo)
+        }
+
+        let store = AppStore()
+            .registerReducer(for: \.todos, {state, action in
+                if case Action.AddTodo(let todo) = action {
+                    var newState = state
+                    newState.append(todo)
+                    return newState
+                }
+                return state
+            })
+            .registerReducer(for: \.counter, {state, action in
+                switch action {
+                case CounterAction.Increment:
+                    return state + 1
+                case CounterAction.Decrement:
+                    return state - 1
+                default:
+                    return state
+                }
+            })
+            .initialize()
         
-        let store = TestStore().initialize()
-        
-        let getTodosForSelectedUser = { (userId: Int) in
-            return TestStore.createSelector(path: \.todos, path2: \.userTodoIds, handler: { todos, userTodoIds -> [Todo] in
+        func getTodosForSelectedUser(_ userId: Int) -> AppStore.Selector<[Todo]> {
+            AppStore.createSelector(path: \.todos, path2: \.userTodoIds) { todos, userTodoIds -> [Todo] in
                 let todoIds = userTodoIds[userId] ?? []
                 let userTodos = todos.filter { todo in  todoIds.contains(todo.id) }
                 return userTodos
-            })
+            }
         }
         
-        let _ = store.select(getTodosForSelectedUser(userId2)).sink(receiveValue: {userTodos in
+        store.dispatch(action: Action.AddTodo(mockTodo2))
+        let _ = store.select(getTodosForSelectedUser(userId2)).sink { userTodos in
             XCTAssertEqual(userTodos, [mockTodo2])
-        })
+        }
+
     }
 
     static var allTests = [
         ("testExample", testExampleWithCounter),
     ]
 }
+
+

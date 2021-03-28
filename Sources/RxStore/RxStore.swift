@@ -121,8 +121,9 @@ extension RxStoreProtocol {
 
 
 extension RxStoreProtocol {
+    
+    public typealias Selector<T> = (Self) -> AnyPublisher<T, Never>
 
-    public typealias Selector<A: State,B: State,C> = (KeyPath<Self,RxStoreSubject<A>>,KeyPath<Self,RxStoreSubject<B>>,  @escaping (A,B) -> C) -> (Self) -> AnyPublisher<C, Never>
 
     public static func createSelector<A,B,C>(path: KeyPath<Self,RxStoreSubject<A>>, path2: KeyPath<Self,RxStoreSubject<B>>, handler: @escaping (A,B) -> C) -> (Self) -> AnyPublisher<C, Never> {
         func result(store: Self) -> AnyPublisher<C, Never> {
@@ -133,7 +134,7 @@ extension RxStoreProtocol {
         return result
     }
 
-    public func select<R>(_ selector: @escaping (Self) -> R) -> R {
+    public func select<R>(_ selector: @escaping Selector<R>) -> AnyPublisher<R, Never> {
         return selector(self)
     }
 }
