@@ -62,9 +62,27 @@ public enum RxStoreActions: RxStoreAction {
 }
 
 
+public struct Effects<K: RxStoreProtocol, T: RxStoreAction> {
+    let type: T.Type
+    let handler: (K, T) -> AnyPublisher<RxStoreAction,Never>
+
+    public init(_ type: T.Type, handler: @escaping (K, T) -> AnyPublisher<RxStoreAction,Never>) {
+        self.handler = handler
+        self.type = T.self
+    }
+    
+    public func handle(state: K, action: RxStoreAction) -> AnyPublisher<RxStoreAction,Never> {
+        if let item = action as? T {
+            return handler(state, item)
+        }
+        return Just(RxStoreActions.Empty).eraseToAnyPublisher()
+    }
+}
 extension RxStoreProtocol {
     public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
-    public typealias Effect = (Self, ActionObservable) -> ActionObservable
+//    public typealias Effect = (Self, ActionObservable) -> ActionObservable
+    public typealias Effect<T: RxStoreAction> = Effects<Self,T>
+    
 }
 
 extension RxStoreProtocol {
@@ -90,12 +108,14 @@ extension RxStoreProtocol {
     
 }
 
+
+
 extension RxStoreProtocol {
-    public func registerEffects(_ effects: [Effect] ) -> Self {
+    public func registerEffects<T>(_ effects: [Effects<Self, T>] ) -> Self {
         self.stream = self.stream
                 .flatMap({ action in
                     return effects.map({effect in
-                        effect(self, Just(action).eraseToAnyPublisher())
+                        effect.handle(state: self, action: action)
                     }).compactMap({$0}).publisher.flatMap({result in result})
                     .map({
                         self.actions.send($0)
@@ -123,7 +143,6 @@ extension RxStoreProtocol {
 extension RxStoreProtocol {
     
     public typealias Selector<T> = (Self) -> AnyPublisher<T, Never>
-
 
     public static func createSelector<A,B,C>(path: KeyPath<Self,RxStoreSubject<A>>, path2: KeyPath<Self,RxStoreSubject<B>>, handler: @escaping (A,B) -> C) -> (Self) -> AnyPublisher<C, Never> {
         func result(store: Self) -> AnyPublisher<C, Never> {
@@ -158,3 +177,4 @@ open class RxStore: RxStoreProtocol {
     }
 
 }
+

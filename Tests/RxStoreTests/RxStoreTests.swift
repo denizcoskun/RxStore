@@ -80,8 +80,15 @@ final class RxStoreTests: XCTestCase {
             
         }
         
-        enum Action: RxStoreAction {
-            case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
+        enum Action {
+            struct LoadTodos: RxStoreAction {}
+            struct LoadTodosSuccess: RxStoreAction {
+                let todos: [Todo]
+                init(_ todos: [Todo]) {
+                    self.todos = todos;
+                }
+            }
+            struct LoadTodosFailure: RxStoreAction {}
         }
         
         typealias TodosState = Dictionary<Int, Todo>
@@ -91,9 +98,9 @@ final class RxStoreTests: XCTestCase {
         }
         let todoReducer: RxStore.Reducer = {state, action -> TodosState in
             switch action {
-            case Action.LoadTodosSuccess(let todos):
+            case let action as Action.LoadTodosSuccess:
                 var newState = state
-                todos.forEach {
+                action.todos.forEach {
                     newState[$0.id] = $0
                 }
                 return newState
@@ -101,20 +108,19 @@ final class RxStoreTests: XCTestCase {
                 return state
             }
         }
-        
-        let loadTodos: RxStore.Effect = {state, action in
-            action.flatMap {action -> RxStore.ActionObservable in
-                if case Action.LoadTodos = action   {
-                    return mockGetTodosFromServer().map {
-                        Action.LoadTodosSuccess($0)
-                    }.eraseToAnyPublisher()
+
+        let loadTodos = AppStore.Effect(Action.LoadTodos.self) { state, action in
+            mockGetTodosFromServer()
+                .map {
+                    Action.LoadTodosSuccess($0)
                 }
-                return Empty().eraseToAnyPublisher()
-            }.eraseToAnyPublisher()
+                .replaceError(with: Action.LoadTodosFailure())
+                .eraseToAnyPublisher()
         }
+
         
         class AppStore: RxStore {
-            var todosState = RxStoreSubject<TodosState>([:])
+            var todosState = State<TodosState>([:])
         }
         
         let store = AppStore()
@@ -122,7 +128,7 @@ final class RxStoreTests: XCTestCase {
             .registerEffects([loadTodos])
             .initialize()
         
-        store.dispatch(action: Action.LoadTodos)
+        store.dispatch(action: Action.LoadTodos())
         let _ = store.todosState.sink(receiveValue: {state in
             XCTAssertEqual(state, [mockTodo.id: mockTodo])
         })
