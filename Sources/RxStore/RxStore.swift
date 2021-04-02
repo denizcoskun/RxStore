@@ -62,28 +62,14 @@ public enum RxStoreActions: RxStoreAction {
 }
 
 
-public struct Effects<K: RxStoreProtocol, T: RxStoreAction> {
-    let type: T.Type
-    let handler: (K, T) -> AnyPublisher<RxStoreAction,Never>
 
-    public init(_ type: T.Type, handler: @escaping (K, T) -> AnyPublisher<RxStoreAction,Never>) {
-        self.handler = handler
-        self.type = T.self
-    }
-    
-    public func handle(state: K, action: RxStoreAction) -> AnyPublisher<RxStoreAction,Never> {
-        if let item = action as? T {
-            return handler(state, item)
-        }
-        return Just(RxStoreActions.Empty).eraseToAnyPublisher()
-    }
-}
 extension RxStoreProtocol {
     public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
 //    public typealias Effect = (Self, ActionObservable) -> ActionObservable
-    public typealias Effect<T: RxStoreAction> = Effects<Self,T>
+//    public typealias Effect<:T: RxStoreAction> = Effects<T>
     
 }
+
 
 extension RxStoreProtocol {
 
@@ -111,11 +97,11 @@ extension RxStoreProtocol {
 
 
 extension RxStoreProtocol {
-    public func registerEffects<T>(_ effects: [Effects<Self, T>] ) -> Self {
+    public func registerEffects(_ effects: [(Self, RxStoreAction) -> AnyPublisher<RxStoreAction, Never>] ) -> Self {
         self.stream = self.stream
                 .flatMap({ action in
                     return effects.map({effect in
-                        effect.handle(state: self, action: action)
+                        effect(self, action)
                     }).compactMap({$0}).publisher.flatMap({result in result})
                     .map({
                         self.actions.send($0)
@@ -157,6 +143,20 @@ extension RxStoreProtocol {
         return selector(self)
     }
     
+}
+
+extension RxStoreProtocol {
+    public typealias Effect = (Self, RxStoreAction) -> AnyPublisher<RxStoreAction, Never>
+    
+    public static func createEffect<T: RxStoreAction>(_ type: T.Type, handler: @escaping (Self, T) -> AnyPublisher<RxStoreAction, Never>) -> Effect {
+        func handle(_ store: Self, _ action: RxStoreAction) ->   AnyPublisher<RxStoreAction, Never> {
+            if let item = action as? T {
+                return handler(store, item)
+            }
+            return Just(RxStoreActions.Empty).eraseToAnyPublisher()
+        }
+        return handle
+    }
 }
 
 

@@ -109,7 +109,14 @@ final class RxStoreTests: XCTestCase {
             }
         }
 
-        let loadTodos = AppStore.Effect(Action.LoadTodos.self) { state, action in
+        
+        class AppStore: RxStore {
+            var todosState = State<TodosState>([:])
+        }
+        
+        
+        
+        let loadTodosEffect = AppStore.createEffect(Action.LoadTodos.self) { store, action in
             mockGetTodosFromServer()
                 .map {
                     Action.LoadTodosSuccess($0)
@@ -117,17 +124,12 @@ final class RxStoreTests: XCTestCase {
                 .replaceError(with: Action.LoadTodosFailure())
                 .eraseToAnyPublisher()
         }
-
-        
-        class AppStore: RxStore {
-            var todosState = State<TodosState>([:])
-        }
         
         let store = AppStore()
             .registerReducer(for: \.todosState, todoReducer)
-            .registerEffects([loadTodos])
+            .registerEffects([loadTodosEffect])
             .initialize()
-        
+
         store.dispatch(action: Action.LoadTodos())
         let _ = store.todosState.sink(receiveValue: {state in
             XCTAssertEqual(state, [mockTodo.id: mockTodo])
