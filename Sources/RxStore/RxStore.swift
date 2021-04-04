@@ -103,9 +103,9 @@ extension RxStoreProtocol {
                     return effects.map({effect in
                         effect(self, action)
                     }).compactMap({$0}).publisher.flatMap({result in result})
-                    .map({
-                        self.actions.send($0)
-                        return RxStoreActions.Empty
+                    .flatMap({action -> AnyPublisher<RxStoreAction, Never> in
+                        self.actions.send(action)
+                        return Empty<RxStoreAction, Never>().eraseToAnyPublisher()
                     })
                     .eraseToAnyPublisher()
                 })
@@ -153,7 +153,7 @@ extension RxStoreProtocol {
             if let item = action as? T {
                 return handler(store, item)
             }
-            return Just(RxStoreActions.Empty).eraseToAnyPublisher()
+            return Empty<RxStoreAction, Never>().eraseToAnyPublisher()
         }
         return handle
     }
@@ -166,14 +166,7 @@ open class RxStore: RxStoreProtocol {
     public var _anyCancellable: AnyCancellable?
     
     public init() {
-        self.stream = actions
-            .filter { action in
-                if case RxStoreActions.Empty = action {
-                    return false
-                }
-                return true
-            }
-            .eraseToAnyPublisher()
+        self.stream = actions.eraseToAnyPublisher()
     }
 
 }
