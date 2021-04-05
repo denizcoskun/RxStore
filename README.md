@@ -18,8 +18,8 @@ class AppStore: RxStore {
 
 // Define actions
 enum CounterAction {
-    struct Increment: RxStore.Action {}
-    struct Decrement: RxStore.Action {}
+    struct Increment: RxStoreAction {}
+    struct Decrement: RxStoreAction {}
 }
 
 // Create a reducer
@@ -137,7 +137,7 @@ class AppStore: RxStore {
     var loadingState = RxStore.State(false)
 }
 
-enum Action:  {
+enum Action {
     struct LoadTodos: RxStoreAction {}
     struct LoadTodosSuccess: RxStoreAction {
         let payload: [Todo]
