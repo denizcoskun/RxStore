@@ -3,13 +3,18 @@ import Combine
 
 import RxStore
 
-enum CounterAction: RxStore.Action {
-    case Increment
-    case Decrement
-    case Dummy
+enum CounterAction {
+    struct Increment: RxStoreAction {}
+    struct Decrement: RxStoreAction {}
+
 }
 
 final class RxStoreTests: XCTestCase {
+    var subscriptions = Set<AnyCancellable>()
+    
+    override func tearDown() {
+      subscriptions = []
+    }
     func testExampleWithCounter() {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
@@ -23,9 +28,9 @@ final class RxStoreTests: XCTestCase {
         
         let reducer : AppStore.Reducer<Int> = {state, action in
             switch action {
-            case CounterAction.Increment:
+            case _ as CounterAction.Increment:
                 return state + 1
-            case CounterAction.Decrement:
+            case _ as CounterAction.Decrement:
                 return state - 1
             default:
                 return state
@@ -35,7 +40,7 @@ final class RxStoreTests: XCTestCase {
         let store = AppStore().registerReducer(for: \.counterState, reducer)
         .initialize()
         
-        store.dispatch(action: CounterAction.Increment)
+        store.dispatch(action: CounterAction.Increment())
         let _ = store.counterState.sink(receiveValue: { value in
             XCTAssertEqual(value, 1)
         })
@@ -43,27 +48,6 @@ final class RxStoreTests: XCTestCase {
         
     }
     
-    func testEmptyActionsIgnored() {
-        class TestStore: RxStore {
-            let emptyState = RxStore.State(false)
-        }
-        
-        let store = TestStore().registerReducer(for: \.emptyState, {state, action in
-                if case RxStoreActions.Empty = action {
-                    return true
-                }
-                return false
-            }).initialize()
-        
-        enum Action: RxStore.Action {
-            case first
-        }
-        let _ = store.emptyState.sink(receiveValue: {state in
-            XCTAssertEqual(state, false)
-        })
-        store.dispatch(action: RxStoreActions.Empty)
-        store.dispatch(action: Action.first)
-    }
     
     func testEffects() {
         struct Todo: Codable, Equatable {
@@ -115,12 +99,9 @@ final class RxStoreTests: XCTestCase {
         }
         
         
-        
         let loadTodosEffect = AppStore.createEffect(Action.LoadTodos.self) { store, action in
             mockGetTodosFromServer()
-                .map {
-                    Action.LoadTodosSuccess($0)
-                }
+                .map { Action.LoadTodosSuccess($0) }
                 .replaceError(with: Action.LoadTodosFailure())
                 .eraseToAnyPublisher()
         }
@@ -129,12 +110,20 @@ final class RxStoreTests: XCTestCase {
             .registerReducer(for: \.todosState, todoReducer)
             .registerEffects([loadTodosEffect])
             .initialize()
-
+        var actions: [RxStoreAction] = []
+        store.stream.prefix(2).sink(receiveCompletion: {_ in
+            XCTAssertTrue(actions[0] is Action.LoadTodos)
+            XCTAssertTrue(actions[1] is Action.LoadTodosSuccess)
+        }, receiveValue: {action in
+            actions.append(action)
+        }).store(in: &subscriptions)
+        
         store.dispatch(action: Action.LoadTodos())
+
         let _ = store.todosState.sink(receiveValue: {state in
             XCTAssertEqual(state, [mockTodo.id: mockTodo])
         })
-        
+
     }
     
     func testSelector() {
@@ -143,15 +132,17 @@ final class RxStoreTests: XCTestCase {
             var userTodoIds = RxStore.State<Dictionary<Int, [Int]>>([userId:[mockTodo.id], userId2: [mockTodo2.id]])
             var counter = RxStore.State(0)
         }
-        enum Action: RxStore.Action {
-            case AddTodo(Todo)
+        enum Action {
+            struct AddTodo: RxStoreAction {
+                let todo: Todo
+            }
         }
 
         func counterReducer(_ state: Int, action: RxStore.Action) -> Int {
                 switch action {
-                    case CounterAction.Increment:
+                    case _ as CounterAction.Increment:
                         return state + 1
-                    case CounterAction.Decrement:
+                    case _ as CounterAction.Decrement:
                         return state - 1
                     default:
                         return state
@@ -160,9 +151,9 @@ final class RxStoreTests: XCTestCase {
         
         let store = AppStore()
             .registerReducer(for: \.todos, {state, action in
-                if case Action.AddTodo(let todo) = action {
+                if let action = action as? Action.AddTodo {
                     var newState = state
-                    newState.append(todo)
+                    newState.append(action.todo)
                     return newState
                 }
                 return state
@@ -177,12 +168,13 @@ final class RxStoreTests: XCTestCase {
                 return userTodos
             }
         }
-        
-        store.dispatch(action: Action.AddTodo(mockTodo2))
-        let _ = store.select(getTodosForSelectedUser(userId2)).sink { userTodos in
-            XCTAssertEqual(userTodos, [mockTodo2])
-        }
 
+        let _ = store.select(getTodosForSelectedUser(userId2)).prefix(2).collect()
+            .sink {todos in
+                XCTAssert(todos == [[], [mockTodo2]] as [[Todo]], "failed")
+            }.store(in: &subscriptions)
+        
+        store.dispatch(action: Action.AddTodo(todo: mockTodo2))
     }
 
     static var allTests = [

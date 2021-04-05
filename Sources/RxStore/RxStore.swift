@@ -57,17 +57,10 @@ public protocol RxStoreProtocol : AnyObject {
 }
 
 
-public enum RxStoreActions: RxStoreAction {
-    case Empty
-}
-
 
 
 extension RxStoreProtocol {
     public typealias ActionObservable = AnyPublisher<RxStoreAction, Never>
-//    public typealias Effect = (Self, ActionObservable) -> ActionObservable
-//    public typealias Effect<:T: RxStoreAction> = Effects<T>
-    
 }
 
 
@@ -112,7 +105,6 @@ extension RxStoreProtocol {
             .eraseToAnyPublisher()
         return self
     }
-    
 }
 
 extension RxStoreProtocol {

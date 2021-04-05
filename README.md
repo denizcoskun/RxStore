@@ -17,17 +17,17 @@ class AppStore: RxStore {
 }
 
 // Define actions
-enum CounterAction: RxStore.Action {
-    case Increment
-    case Decrement
+enum CounterAction {
+    struct Increment: RxStore.Action {}
+    struct Decrement: RxStore.Action {}
 }
 
 // Create a reducer
 let reducer : RxStore.Reducer<Int> = {state, action in
     switch action {
-    case CounterAction.Increment:
+    case _ as CounterAction.Increment:
         return state + 1
-    case CounterAction.Decrement:
+    case _ as CounterAction.Decrement:
         return state - 1
     default:
         return state
@@ -63,23 +63,23 @@ class AppStore: RxStore {
 }
 
 // Define actions
-enum CounterAction: RxStore.Action {
-    case Increment
-    case Decrement
+enum CounterAction {
+    struct Increment: RxStoreAction {}
+    struct Decrement: RxStoreAction {}
 }
 
-enum LoadingAction: RxStore.Action {
-    case Loading
-    case Loaded
+enum LoadingAction {
+    struct Loading: RxStoreAction {}
+    struct Loaded: RxStoreAction {}
 }
 
 
 // Reducer for counter state
 let counterReducer : RxStore.Reducer<Int> = {state, action in
     switch action {
-    case CounterAction.Increment:
+    case _ as CounterAction.Increment:
         return state + 1
-    case CounterAction.Decrement:
+    case _ as CounterAction.Decrement:
         return state - 1
     default:
         return state
@@ -89,9 +89,9 @@ let counterReducer : RxStore.Reducer<Int> = {state, action in
 // Reducer for loading state
 let loadingReducer: RxStore.Reducer<Bool> = {state, action in
     switch action {
-    case LoadingAction.Loading:
+    case _ as LoadingAction.Loading:
         return true
-    case LoadingAction.Loaded:
+    case _ as LoadingAction.Loaded:
         return false
     default:
         return state
@@ -115,8 +115,8 @@ let cancellable2 = appStore
     .loadingState
     .sink(receiveValue: {print($0)}) // false, true
 
-appStore.dispatch(action: CounterAction.Increment)
-appStore.dispatch(action: LoadingAction.Loaded)
+appStore.dispatch(action: CounterAction.Increment())
+appStore.dispatch(action: LoadingAction.Loaded())
 
 ```
 
@@ -137,15 +137,21 @@ class AppStore: RxStore {
     var loadingState = RxStore.State(false)
 }
 
-enum Action: RxStore.Action {
-    case LoadTodos, LoadTodosSuccess([Todo]), LoadTodosFailure
+enum Action:  {
+    struct LoadTodos: RxStoreAction {}
+    struct LoadTodosSuccess: RxStoreAction {
+        let payload: [Todo]
+    }
+    struct LoadTodosFailure: RxStoreAction {
+        let error: Error
+    }
 }
 
 let todoReducer: RxStore.Reducer = {state, action -> TodosState in
     switch action {
-    case Action.LoadTodosSuccess(let todos):
+    case let action as Action.LoadTodosSuccess:
         var newState = state
-        todos.forEach {
+        action.payload.forEach {
             newState[$0.id] = $0
         }
         return newState
@@ -154,15 +160,11 @@ let todoReducer: RxStore.Reducer = {state, action -> TodosState in
     }
 }
 
-let loadTodosEffect: RxStore.Effect = {state, action in
-    action.flatMap {action -> RxStore.ActionObservable in
-        if case Action.LoadTodos = action   {
-            return mockGetTodosFromServer().map {
-                Action.LoadTodosSuccess($0)
-            }.eraseToAnyPublisher()
-        }
-        return Empty().eraseToAnyPublisher()
-    }.eraseToAnyPublisher()
+let loadTodosEffect = AppStore.createEffect(Action.LoadTodos.self) { store, action in
+    mockGetTodosFromServer()
+        .map { Action.LoadTodosSuccess($0) }
+        .catch {Just(Action.LoadTodosFailure(error: $0))}
+        .eraseToAnyPublisher()
 }
 
 
